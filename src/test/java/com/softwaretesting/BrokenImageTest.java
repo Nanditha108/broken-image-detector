@@ -1,11 +1,19 @@
 
 package com.softwaretesting;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.OutputType;
+import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -91,9 +99,34 @@ public class BrokenImageTest {
         System.out.println("Broken images: " + broken);
         System.out.println("Valid images: " + (images.size() - broken));
 
-        // This test reports the detected images; it does not fail
-        // merely because the website contains broken images.
-        Assert.assertTrue(images.size() > 0, "No images to inspect");
+        // Report broken images without failing the test just because
+        // the target website intentionally contains broken images.
+        Assert.assertTrue(
+            images.size() > 0,
+            "No images to inspect"
+        );
+    }
+
+    @Test(priority = 4)
+    public void captureScreenshot() throws IOException {
+        Path screenshotDir = Paths.get("target", "screenshots");
+        Files.createDirectories(screenshotDir);
+
+        File screenshot = ((TakesScreenshot) driver)
+            .getScreenshotAs(OutputType.FILE);
+
+        Path destination =
+            screenshotDir.resolve("broken-images-page.png");
+
+        Files.copy(
+            screenshot.toPath(),
+            destination,
+            StandardCopyOption.REPLACE_EXISTING
+        );
+
+        System.out.println(
+            "Screenshot saved: " + destination.toAbsolutePath()
+        );
     }
 
     @AfterClass(alwaysRun = true)
