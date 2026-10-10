@@ -14,6 +14,7 @@ import java.util.Map;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -36,7 +37,8 @@ public class BrokenImageTest {
             "https://the-internet.herokuapp.com/broken_images"
         );
 
-        new WebDriverWait(driver, Duration.ofSeconds(15))
+        // Wait for the webpage to load.
+        new WebDriverWait(driver, Duration.ofSeconds(20))
             .until(d -> "complete".equals(
                 ((JavascriptExecutor) d)
                     .executeScript("return document.readyState")
@@ -59,57 +61,84 @@ public class BrokenImageTest {
         Long count = (Long) ((JavascriptExecutor) driver)
             .executeScript("return document.images.length");
 
-        System.out.println("Total images: " + count);
+        System.out.println("Total images found: " + count);
 
         Assert.assertTrue(
             count > 0,
-            "No images were found"
+            "No images were found on the page"
         );
     }
 
     @Test(priority = 3)
     public void detectBrokenImages() {
+
+        // Wait for images to finish loading or fail.
+        // If the wait times out, still inspect their current status.
+        try {
+            new WebDriverWait(driver, Duration.ofSeconds(15))
+                .until(d -> (Boolean) ((JavascriptExecutor) d)
+                    .executeScript(
+                        "return Array.from(document.images)"
+                        + ".every(img => img.complete)"
+                    ));
+        } catch (TimeoutException e) {
+            System.out.println(
+                "Warning: Some images did not settle in time."
+            );
+        }
+
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> images =
             (List<Map<String, Object>>)
             ((JavascriptExecutor) driver).executeScript(
-                "return Array.from(document.images).map(img => ({" +
-                "src: img.currentSrc || img.src," +
-                "complete: img.complete," +
-                "width: img.naturalWidth" +
-                "}));"
+                "return Array.from(document.images).map(img => ({"
+                + "src: img.currentSrc || img.src,"
+                + "complete: img.complete,"
+                + "width: img.naturalWidth"
+                + "}));"
             );
 
         int broken = 0;
+        int valid = 0;
+
+        System.out.println("----- IMAGE CHECK RESULTS -----");
 
         for (Map<String, Object> image : images) {
-            boolean loaded =
-                Boolean.TRUE.equals(image.get("complete"))
-                && ((Number) image.get("width")).intValue() > 0;
+            String src = String.valueOf(image.get("src"));
 
-            if (loaded) {
-                System.out.println("VALID: " + image.get("src"));
+            boolean complete =
+                Boolean.TRUE.equals(image.get("complete"));
+
+            int width =
+                ((Number) image.get("width")).intValue();
+
+            if (complete && width > 0) {
+                valid++;
+                System.out.println("VALID: " + src);
             } else {
                 broken++;
-                System.out.println("BROKEN: " + image.get("src"));
+                System.out.println("BROKEN: " + src);
             }
         }
 
+        System.out.println("-------------------------------");
         System.out.println("Total images: " + images.size());
         System.out.println("Broken images: " + broken);
-        System.out.println("Valid images: " + (images.size() - broken));
+        System.out.println("Valid images: " + valid);
 
-        // Report broken images without failing the test just because
-        // the target website intentionally contains broken images.
+        // Do not fail just because the demo website
+        // intentionally contains broken images.
         Assert.assertTrue(
-            images.size() > 0,
-            "No images to inspect"
+            !images.isEmpty(),
+            "No images were available to inspect"
         );
     }
 
     @Test(priority = 4)
     public void captureScreenshot() throws IOException {
-        Path screenshotDir = Paths.get("target", "screenshots");
+        Path screenshotDir =
+            Paths.get("target", "screenshots");
+
         Files.createDirectories(screenshotDir);
 
         File screenshot = ((TakesScreenshot) driver)
@@ -125,7 +154,8 @@ public class BrokenImageTest {
         );
 
         System.out.println(
-            "Screenshot saved: " + destination.toAbsolutePath()
+            "Screenshot saved: "
+            + destination.toAbsolutePath()
         );
     }
 
