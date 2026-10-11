@@ -30,6 +30,7 @@ public class BrokenImageTest {
 
     @BeforeClass
     public void setUp() {
+
         driver = new ChromeDriver();
         driver.manage().window().maximize();
 
@@ -37,16 +38,19 @@ public class BrokenImageTest {
             "https://the-internet.herokuapp.com/broken_images"
         );
 
-        // Wait for the webpage to load.
+        // Wait until the webpage finishes loading
         new WebDriverWait(driver, Duration.ofSeconds(20))
             .until(d -> "complete".equals(
                 ((JavascriptExecutor) d)
                     .executeScript("return document.readyState")
             ));
+
+        System.out.println("Website opened successfully.");
     }
 
     @Test(priority = 1)
     public void verifyPageTitle() {
+
         Assert.assertEquals(
             driver.getTitle(),
             "The Internet",
@@ -58,6 +62,7 @@ public class BrokenImageTest {
 
     @Test(priority = 2)
     public void verifyImagesExist() {
+
         Long count = (Long) ((JavascriptExecutor) driver)
             .executeScript("return document.images.length");
 
@@ -65,32 +70,33 @@ public class BrokenImageTest {
 
         Assert.assertTrue(
             count > 0,
-            "No images were found on the page"
+            "No images found on the webpage"
         );
     }
 
     @Test(priority = 3)
     public void detectBrokenImages() {
 
-        // Wait for images to finish loading or fail.
-        // If the wait times out, still inspect their current status.
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+
+        // Wait for all images to finish loading or fail
         try {
-            new WebDriverWait(driver, Duration.ofSeconds(15))
-                .until(d -> (Boolean) ((JavascriptExecutor) d)
-                    .executeScript(
-                        "return Array.from(document.images)"
-                        + ".every(img => img.complete)"
-                    ));
+            new WebDriverWait(driver, Duration.ofSeconds(20))
+                .until(d -> (Boolean) js.executeScript(
+                    "return Array.from(document.images)"
+                    + ".every(img => img.complete)"
+                ));
+
         } catch (TimeoutException e) {
             System.out.println(
-                "Warning: Some images did not settle in time."
+                "Warning: Some images did not finish loading."
             );
         }
 
+        // Collect image information
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> images =
-            (List<Map<String, Object>>)
-            ((JavascriptExecutor) driver).executeScript(
+            (List<Map<String, Object>>) js.executeScript(
                 "return Array.from(document.images).map(img => ({"
                 + "src: img.currentSrc || img.src,"
                 + "complete: img.complete,"
@@ -100,10 +106,12 @@ public class BrokenImageTest {
 
         int broken = 0;
         int valid = 0;
+        int pending = 0;
 
         System.out.println("----- IMAGE CHECK RESULTS -----");
 
         for (Map<String, Object> image : images) {
+
             String src = String.valueOf(image.get("src"));
 
             boolean complete =
@@ -112,9 +120,20 @@ public class BrokenImageTest {
             int width =
                 ((Number) image.get("width")).intValue();
 
-            if (complete && width > 0) {
+            System.out.println(
+                "CHECK: " + src
+                + " | complete=" + complete
+                + " | naturalWidth=" + width
+            );
+
+            if (!complete) {
+                pending++;
+                System.out.println("NOT FINISHED: " + src);
+
+            } else if (width > 0) {
                 valid++;
                 System.out.println("VALID: " + src);
+
             } else {
                 broken++;
                 System.out.println("BROKEN: " + src);
@@ -125,9 +144,8 @@ public class BrokenImageTest {
         System.out.println("Total images: " + images.size());
         System.out.println("Broken images: " + broken);
         System.out.println("Valid images: " + valid);
+        System.out.println("Unfinished images: " + pending);
 
-        // Do not fail just because the demo website
-        // intentionally contains broken images.
         Assert.assertTrue(
             !images.isEmpty(),
             "No images were available to inspect"
@@ -136,13 +154,15 @@ public class BrokenImageTest {
 
     @Test(priority = 4)
     public void captureScreenshot() throws IOException {
+
         Path screenshotDir =
             Paths.get("target", "screenshots");
 
         Files.createDirectories(screenshotDir);
 
-        File screenshot = ((TakesScreenshot) driver)
-            .getScreenshotAs(OutputType.FILE);
+        File screenshot =
+            ((TakesScreenshot) driver)
+                .getScreenshotAs(OutputType.FILE);
 
         Path destination =
             screenshotDir.resolve("broken-images-page.png");
@@ -161,8 +181,11 @@ public class BrokenImageTest {
 
     @AfterClass(alwaysRun = true)
     public void tearDown() {
+
         if (driver != null) {
             driver.quit();
         }
+
+        System.out.println("Browser closed successfully.");
     }
 }
