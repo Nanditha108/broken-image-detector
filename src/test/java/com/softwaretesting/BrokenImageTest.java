@@ -10,6 +10,7 @@ import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
 
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
@@ -17,6 +18,9 @@ import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.logging.LogType;
+import org.openqa.selenium.logging.LoggingPreferences;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import org.testng.Assert;
@@ -30,7 +34,17 @@ public class BrokenImageTest {
 
     @BeforeClass
     public void setUp() {
-        driver = new ChromeDriver();
+        ChromeOptions options = new ChromeOptions();
+
+        // Do not use headless mode: Chrome should open visibly.
+        options.addArguments("--window-size=1920,1080");
+
+        // Enable Chrome performance logs for network diagnostics.
+        LoggingPreferences logs = new LoggingPreferences();
+        logs.enable(LogType.PERFORMANCE, Level.ALL);
+        options.setCapability("goog:loggingPrefs", logs);
+
+        driver = new ChromeDriver(options);
         driver.manage().window().maximize();
 
         driver.get(
@@ -44,6 +58,8 @@ public class BrokenImageTest {
             ));
 
         System.out.println("Website opened successfully.");
+        System.out.println("Browser URL: " + driver.getCurrentUrl());
+        System.out.println("Browser title: " + driver.getTitle());
     }
 
     @Test(priority = 1)
@@ -87,10 +103,7 @@ public class BrokenImageTest {
             );
         }
 
-        // Diagnostic: show the browser and banner image status.
-        System.out.println("Browser URL: " + driver.getCurrentUrl());
-        System.out.println("Browser title: " + driver.getTitle());
-
+        // Diagnostic information for the green banner.
         Object bannerStatus = js.executeScript(
             "var img = Array.from(document.images).find("
             + "i => i.src.includes('forkme_right_green_007200.png'));"
@@ -100,7 +113,6 @@ public class BrokenImageTest {
 
         System.out.println("Banner image status: " + bannerStatus);
 
-        // Collect the current status of all images.
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> images =
             (List<Map<String, Object>>) js.executeScript(
@@ -149,6 +161,27 @@ public class BrokenImageTest {
         System.out.println("Broken images: " + broken);
         System.out.println("Valid images: " + valid);
         System.out.println("Unfinished images: " + unfinished);
+
+        // Print performance events related to the banner request.
+        System.out.println("----- BANNER NETWORK LOGS -----");
+
+        try {
+            for (org.openqa.selenium.logging.LogEntry entry :
+                    driver.manage().logs().get(LogType.PERFORMANCE)) {
+
+                String message = entry.getMessage();
+
+                if (message.contains("forkme_right_green_007200.png")) {
+                    System.out.println(message);
+                }
+            }
+        } catch (Exception e) {
+            System.out.println(
+                "Could not read performance logs: " + e.getMessage()
+            );
+        }
+
+        System.out.println("-------------------------------");
 
         Assert.assertTrue(
             !images.isEmpty(),
