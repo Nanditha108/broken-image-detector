@@ -4,21 +4,80 @@
 <head>
     <meta charset="UTF-8">
     <title>Broken Image Detector Demo</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 30px;
+            background: #f4f6f8;
+        }
+
+        h1 {
+            color: #183153;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            width: 240px;
+            padding: 15px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        img {
+            display: block;
+            width: 220px;
+            height: 150px;
+            border: 1px solid #999;
+            object-fit: contain;
+        }
+
+        .valid {
+            color: green;
+        }
+
+        .broken {
+            color: red;
+        }
+    </style>
 </head>
+
 <body>
     <h1>Broken Image Detector</h1>
-    <p>Demonstration of valid and broken images using Selenium.</p>
+    <p>This page demonstrates two valid and two broken images.</p>
 
-    <h2>Valid Images</h2>
-    <img src="images/valid1.jpg"
-         alt="Valid Image 1" width="200">
-    <img src="images/valid2.jpg"
-         alt="Valid Image 2" width="200">
+    <div class="container">
 
-    <h2>Broken Images</h2>
-    <img src="images/missing1.jpg"
-         alt="Broken Image 1" width="200">
-    <img src="images/missing2.jpg"
-         alt="Broken Image 2" width="200">
+        <div class="card">
+            <h3 class="valid">Valid Image 1</h3>
+            <img src="images/valid1.jpg" alt="Valid Image 1">
+            <p>Expected status: VALID</p>
+        </div>
+
+        <div class="card">
+            <h3 class="valid">Valid Image 2</h3>
+            <img src="images/valid2.jpg" alt="Valid Image 2">
+            <p>Expected status: VALID</p>
+        </div>
+
+        <div class="card">
+            <h3 class="broken">Broken Image 1</h3>
+            <img src="images/missing1.jpg" alt="Broken Image 1">
+            <p>Expected status: BROKEN</p>
+        </div>
+
+        <div class="card">
+            <h3 class="broken">Broken Image 2</h3>
+            <img src="images/missing2.jpg" alt="Broken Image 2">
+            <p>Expected status: BROKEN</p>
+        </div>
+
+    </div>
 </body>
 </html>
